@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Play, Plus, Server, GitBranch, FolderGit2, Circle, CheckCircle2, XCircle, Clock, Loader2, Zap, HardDrive, Cpu, Activity } from 'lucide-react';
+import { Play, Plus, Server, GitBranch, FolderGit2, Circle, CheckCircle2, XCircle, Clock, Loader2, Zap, HardDrive, Cpu, Activity, Trash2 } from 'lucide-react';
 
 interface Stage {
   name: string;
@@ -33,7 +33,7 @@ function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [workers, setWorkers] = useState<WorkerAgent[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [repoUrl, setRepoUrl] = useState('https://github.com/company/auth-service');
+  const [repoUrl, setRepoUrl] = useState('https://github.com/omkarsharma13/devops-pilot-ci');
   const [branch, setBranch] = useState('main');
   const [language, setLanguage] = useState('javascript');
 
@@ -73,6 +73,14 @@ function App() {
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      await axios.post('/api/jobs/reset');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const queuedJobs = jobs.filter(j => j.status === 'queued');
   const inProgressJobs = jobs.filter(j => j.status === 'in-progress');
   const completedJobs = jobs.filter(j => j.status === 'completed');
@@ -86,6 +94,9 @@ function App() {
           Pilot CI
         </div>
         <div className="nav-actions">
+          <button className="btn" onClick={handleClearAll} style={{ background: 'rgba(248, 81, 73, 0.1)', borderColor: 'rgba(248, 81, 73, 0.3)', color: '#f85149' }}>
+            <Trash2 size={16} /> Clear Dashboard
+          </button>
           <button className="btn" onClick={simulateLoad} style={{ background: 'rgba(210,168,255,0.1)', borderColor: 'rgba(210,168,255,0.3)', color: '#d2a8ff' }}>
             <Zap size={16} /> Simulate Traffic Spike
           </button>
