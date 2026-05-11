@@ -20,6 +20,8 @@ interface Job {
   repoUrl: string;
   branch: string;
   language: string;
+  priority?: number;
+  priorityLabel?: string;
   status: 'queued' | 'in-progress' | 'completed';
   result: 'success' | 'failed' | null;
   workerAssigned: string | null;
@@ -258,10 +260,11 @@ function JobCard({ job }: { job: Job }) {
             <FolderGit2 size={16} color="var(--text-muted)" />
             <a href={job.repoUrl} target="_blank" rel="noreferrer" className="job-repo">{getRepoName(job.repoUrl)}</a>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span className="job-branch"><GitBranch size={12} /> {job.branch}</span>
             <span className="job-id">#{job.id}</span>
             <span className="lang-tag">{job.language}</span>
+            <span className={`priority-tag ${job.priorityLabel?.toLowerCase() || ''}`}>{job.priorityLabel || 'Priority: N/A'}</span>
           </div>
           {job.workerAssigned && (
              <div style={{ fontSize: '0.75rem', color: 'var(--color-progress)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>

@@ -75,13 +75,44 @@ app.post('/api/jobs', async (req, res) => {
     res.status(201).json(job);
 });
 
+function getBranchPriority(branch) {
+    const normalized = (branch || '').toLowerCase();
+    if (normalized === 'main' || normalized === 'master') return 1;
+    if (normalized.startsWith('release') || normalized.startsWith('hotfix') || normalized.startsWith('prod')) return 2;
+    if (normalized.startsWith('staging') || normalized.startsWith('qa') || normalized.startsWith('preprod')) return 3;
+    if (normalized.startsWith('feature') || normalized.startsWith('bugfix') || normalized.startsWith('chore')) return 4;
+    return 5;
+}
+
+function getRepoPriority(repoUrl) {
+    const normalized = (repoUrl || '').toLowerCase();
+    if (normalized.includes('/core') || normalized.includes('/platform') || normalized.includes('/backend')) return 1;
+    if (normalized.includes('/service') || normalized.includes('/api') || normalized.includes('/engine')) return 2;
+    if (normalized.includes('/shared') || normalized.includes('/common') || normalized.includes('/lib')) return 3;
+    return 4;
+}
+
+function getPriorityLabel(priority) {
+    if (priority <= 12) return 'High';
+    if (priority <= 24) return 'Medium';
+    return 'Low';
+}
+
+function getPriorityScore(repoUrl, branch) {
+    return getBranchPriority(branch) * 10 + getRepoPriority(repoUrl);
+}
+
 async function createJob(repoUrl, branch, language) {
     const db = await getDB();
+    const normalizedLanguage = (language || 'general').toLowerCase();
+    const priority = getPriorityScore(repoUrl, branch);
     const newJob = {
         id: uuidv4().substring(0, 8),
         repoUrl,
         branch,
-        language: language.toLowerCase(),
+        language: normalizedLanguage,
+        priority,
+        priorityLabel: getPriorityLabel(priority),
         status: 'queued',
         result: null,
         workerAssigned: null,
@@ -118,14 +149,20 @@ app.post('/api/jobs/reset', async (req, res) => {
 
 // 7. Simulate Random Traffic Load
 app.post('/api/simulate-load', async (req, res) => {
-    const languages = ['javascript', 'python', 'go', 'java', 'ruby'];
-    const mockJobsCount = Math.floor(Math.random() * 5) + 3; // 3 to 7 jobs at once
+    const pushes = [
+        { repo: 'https://github.com/company/core-platform', branch: 'main', language: 'javascript' },
+        { repo: 'https://github.com/company/core-platform', branch: 'release/v1.1', language: 'javascript' },
+        { repo: 'https://github.com/company/order-service', branch: 'main', language: 'go' },
+        { repo: 'https://github.com/company/order-service', branch: 'feature/cart-improvements', language: 'go' },
+        { repo: 'https://github.com/company/user-service', branch: 'hotfix/user-login', language: 'python' },
+        { repo: 'https://github.com/company/user-service', branch: 'feature/profile-update', language: 'python' }
+    ];
 
-    for(let i=0; i<mockJobsCount; i++) {
-        const lang = languages[Math.floor(Math.random() * languages.length)];
-        await createJob(`https://github.com/company/microservice-${i+1}`, `feature/update-${Math.floor(Math.random()*100)}`, lang);
+    for (const push of pushes) {
+        await createJob(push.repo, push.branch, push.language);
     }
-    res.json({ message: `Simulated ${mockJobsCount} sudden CI jobs.`});
+
+    res.json({ message: `Simulated ${pushes.length} Git pushes across 3 repos and 6 branches.` });
 });
 
 // 5. Pipeline Scheduler & Worker Assignment
@@ -134,7 +171,12 @@ async function processJobs() {
     let updated = false;
 
     // A. Pick up queued jobs if there's worker capacity
-    const queuedJobs = db.jobs.filter(j => j.status === 'queued').sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const queuedJobs = db.jobs
+        .filter(j => j.status === 'queued')
+        .sort((a, b) => {
+            if ((a.priority ?? 999) !== (b.priority ?? 999)) return (a.priority ?? 999) - (b.priority ?? 999);
+            return new Date(a.createdAt) - new Date(b.createdAt);
+        });
     
     for (let job of queuedJobs) {
         const worker = assignWorker(job.language);
