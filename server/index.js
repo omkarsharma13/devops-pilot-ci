@@ -156,7 +156,7 @@ app.post('/api/simulate-load', async (req, res) => {
         { repo: 'https://github.com/company/order-service', branch: 'feature/cart-improvements', language: 'go' },
         { repo: 'https://github.com/company/user-service', branch: 'hotfix/user-login', language: 'python' },
         { repo: 'https://github.com/company/user-service', branch: 'feature/profile-update', language: 'python' }
-    ];
+    ];  
 
     for (const push of pushes) {
         await createJob(push.repo, push.branch, push.language);
@@ -245,6 +245,13 @@ function finalizeJob(job, resultMode) {
 setInterval(processJobs, 1000);
 
 const PORT = 4000;
+app.get('/', (req, res) => {
+  res.send('Pilot CI Backend Running');
+});
 app.listen(PORT, () => {
     console.log(`Pipeline API server listening on http://localhost:${PORT}`);
+});
+
+app.get('/', (req, res) => {
+  res.send('Pilot CI Backend Running');
 });
